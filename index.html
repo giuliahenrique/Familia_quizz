@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dia da Família</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen p-8 flex justify-center">
+    <div class="max-w-2xl w-full bg-white p-8 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold mb-8 text-center text-blue-600">Quiz Dia da Família</h1>
+
+        <div id="section-form-create" class="block">
+            <h2 class="text-xl font-semibold mb-4">1. Criar Formulário</h2>
+            <input id="form-title" type="text" placeholder="Título do Formulário" class="w-full mb-4 p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <input id="form-student" type="text" placeholder="Nome do Aluno" class="w-full mb-4 p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <button id="btn-create-form" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded font-bold transition-colors">Criar Formulário</button>
+        </div>
+
+        <div id="section-question-create" class="hidden">
+            <h2 class="text-xl font-semibold mb-4">2. Adicionar Questões</h2>
+            <input id="q-text" type="text" placeholder="Pergunta (Ex: Qual o tamanho do meu pé?)" class="w-full mb-4 p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <input id="q-opt-a" type="text" placeholder="Opção A" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <input id="q-opt-b" type="text" placeholder="Opção B" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <input id="q-opt-c" type="text" placeholder="Opção C" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <input id="q-opt-d" type="text" placeholder="Opção D" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+            </div>
+            <select id="q-correct" class="w-full mb-6 p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <option value="A">Alternativa A é a correta</option>
+                <option value="B">Alternativa B é a correta</option>
+                <option value="C">Alternativa C é a correta</option>
+                <option value="D">Alternativa D é a correta</option>
+            </select>
+            <button id="btn-add-question" class="w-full bg-green-500 hover:bg-green-600 text-white p-3 rounded font-bold mb-3 transition-colors">Salvar Questão</button>
+            <button id="btn-finish-questions" class="w-full bg-gray-800 hover:bg-gray-900 text-white p-3 rounded font-bold transition-colors">Finalizar e Iniciar Respostas</button>
+        </div>
+
+        <div id="section-quiz-start" class="hidden">
+            <h2 class="text-xl font-semibold mb-4">3. Identificação do Familiar</h2>
+            <input id="respondent-name" type="text" placeholder="Seu Nome (Ex: Pai do João)" class="w-full mb-4 p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <button id="btn-start-quiz" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded font-bold transition-colors">Iniciar Quiz</button>
+        </div>
+
+        <div id="section-quiz-play" class="hidden">
+            <h2 class="text-2xl font-semibold mb-6 text-gray-700" id="display-question-text"></h2>
+            <div id="options-container" class="space-y-3 mb-6"></div>
+        </div>
+
+        <div id="section-ranking" class="hidden">
+            <h2 class="text-2xl font-semibold mb-6 text-center">Ranking da Família</h2>
+            <ul id="ranking-list" class="space-y-3 mb-6"></ul>
+            <button id="btn-new-attempt" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded font-bold transition-colors">Permitir Nova Tentativa</button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+
+        const state = {
+            formId: null,
+            questions: [],
+            currentQuestionIndex: 0,
+            respondentName: '',
+            answers: []
+        };
+
+        const api = {
+            async post(endpoint, data) {
+                const response = await fetch(`${API_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                return response.json();
+            },
+            async get(endpoint) {
+                const response = await fetch(`${API_URL}${endpoint}`);
+                return response.json();
+            }
+        };
+
+        const dom = {
+            get: (id) => document.getElementById(id),
+            hideAll: () => {
+                const sections = [
+                    'section-form-create', 
+                    'section-question-create', 
+                    'section-quiz-start', 
+                    'section-quiz-play', 
+                    'section-ranking'
+                ];
+                sections.forEach(id => {
+                    const el = document.getElementById(id);
+                    el.classList.remove('block');
+                    el.classList.add('hidden');
+                });
+            },
+            show: (id) => {
+                const el = document.getElementById(id);
+                el.classList.remove('hidden');
+                el.classList.add('block');
+            }
+        };
+
+        const createForm = async () => {
+            const title = dom.get('form-title').value;
+            const studentName = dom.get('form-student').value;
+            const result = await api.post('/forms', { title, studentName });
+            
+            state.formId = result.id;
+            
+            dom.hideAll();
+            dom.show('section-question-create');
+        };
+
+        const addQuestion = async () => {
+            const questionData = {
+                formId: state.formId,
+                questionText: dom.get('q-text').value,
+                optionA: dom.get('q-opt-a').value,
+                optionB: dom.get('q-opt-b').value,
+                optionC: dom.get('q-opt-c').value,
+                optionD: dom.get('q-opt-d').value,
+                correctOption: dom.get('q-correct').value
+            };
+            
+            const result = await api.post('/questions', questionData);
+            state.questions.push(result);
+            
+            clearQuestionInputs();
+        };
+
+        const clearQuestionInputs = () => {
+            dom.get('q-text').value = '';
+            dom.get('q-opt-a').value = '';
+            dom.get('q-opt-b').value = '';
+            dom.get('q-opt-c').value = '';
+            dom.get('q-opt-d').value = '';
+            dom.get('q-correct').value = 'A';
+            dom.get('q-text').focus();
+        };
+
+        const finishQuestions = () => {
+            dom.hideAll();
+            dom.show('section-quiz-start');
+        };
+
+        const startQuiz = () => {
+            state.respondentName = dom.get('respondent-name').value;
+            state.currentQuestionIndex = 0;
+            state.answers = [];
+            
+            dom.hideAll();
+            dom.show('section-quiz-play');
+            renderCurrentQuestion();
+        };
+
+        const renderCurrentQuestion = () => {
+            const question = state.questions[state.currentQuestionIndex];
+            dom.get('display-question-text').innerText = question.question_text;
+            
+            const container = dom.get('options-container');
+            container.innerHTML = '';
+
+            const options = [
+                { label: 'A', text: question.option_a },
+                { label: 'B', text: question.option_b },
+                { label: 'C', text: question.option_c },
+                { label: 'D', text: question.option_d }
+            ];
+
+            options.forEach(opt => {
+                const button = document.createElement('button');
+                button.className = 'w-full text-left p-4 border rounded-lg hover:bg-blue-50 transition-colors font-medium text-lg';
+                button.innerText = `${opt.label}) ${opt.text}`;
+                button.onclick = () => selectAnswer(question.id, opt.label);
+                container.appendChild(button);
+            });
+        };
+
+        const selectAnswer = async (questionId, selectedOption) => {
+            state.answers.push({ questionId, selectedOption });
+            state.currentQuestionIndex++;
+
+            if (state.currentQuestionIndex < state.questions.length) {
+                renderCurrentQuestion();
+            } else {
+                await submitAttempt();
+            }
+        };
+
+        const submitAttempt = async () => {
+            await api.post('/attempts', {
+                formId: state.formId,
+                respondentName: state.respondentName,
+                answers: state.answers
+            });
+            await loadRanking();
+        };
+
+        const loadRanking = async () => {
+            const ranking = await api.get(`/forms/${state.formId}/ranking`);
+            const list = dom.get('ranking-list');
+            list.innerHTML = '';
+            
+            ranking.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.className = 'p-4 bg-gray-50 border rounded-lg flex justify-between items-center text-lg';
+                li.innerHTML = `<span><strong class="text-blue-600 mr-2">${index + 1}º</strong> ${entry.respondent_name}</span><span class="font-bold bg-blue-100 text-blue-800 py-1 px-3 rounded-full">${entry.score} pts</span>`;
+                list.appendChild(li);
+            });
+            
+            dom.hideAll();
+            dom.show('section-ranking');
+        };
+
+        const resetForNewAttempt = () => {
+            dom.get('respondent-name').value = '';
+            dom.hideAll();
+            dom.show('section-quiz-start');
+        };
+
+        dom.get('btn-create-form').onclick = createForm;
+        dom.get('btn-add-question').onclick = addQuestion;
+        dom.get('btn-finish-questions').onclick = finishQuestions;
+        dom.get('btn-start-quiz').onclick = startQuiz;
+        dom.get('btn-new-attempt').onclick = resetForNewAttempt;
+    </script>
+</body>
+</html>

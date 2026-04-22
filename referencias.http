@@ -1,0 +1,69 @@
+POST http://localhost:3000/forms
+Content-Type: application/json
+
+{
+  "title": "Conhecendo o João",
+  "studentName": "João Silva"
+}
+
+###
+
+POST http://localhost:3000/questions
+Content-Type: application/json
+
+{
+  "formId": 1,
+  "questionText": "Qual o tamanho do meu pé?",
+  "optionA": "38",
+  "optionB": "39",
+  "optionC": "40",
+  "optionD": "41",
+  "correctOption": "B"
+}
+
+###
+
+POST http://localhost:3000/questions
+Content-Type: application/json
+
+{
+  "formId": 1,
+  "questionText": "Qual minha comida favorita?",
+  "optionA": "Pizza",
+  "optionB": "Hambúrguer",
+  "optionC": "Macarrão",
+  "optionD": "Salada",
+  "correctOption": "A"
+}
+
+###
+
+POST http://localhost:3000/attempts
+Content-Type: application/json
+
+{
+  "formId": 1,
+  "respondentName": "Carlos Silva (Pai)",
+  "answers": [
+    { "questionId": 1, "selectedOption": "B" },
+    { "questionId": 2, "selectedOption": "C" }
+  ]
+}
+
+###
+
+POST http://localhost:3000/attempts
+Content-Type: application/json
+
+{
+  "formId": 1,
+  "respondentName": "Maria Silva (Mãe)",
+  "answers": [
+    { "questionId": 1, "selectedOption": "B" },
+    { "questionId": 2, "selectedOption": "A" }
+  ]
+}
+
+###
+
+GET http://localhost:3000/forms/1/ranking
