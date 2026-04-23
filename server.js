@@ -1,49 +1,35 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import pg from 'pg';
-import * as dotenv from 'dotenv'
+import * as dotenv from 'dotenv';
 
-dotenv.config()
+dotenv.config();
 
 const { Pool } = pg;
-
-const fastify =Fastify();
-
-await fastify.register(cors, {
-  origin: '*'
-})
 
 const pool = new Pool({
   connectionString: process.env.url_bd,
   ssl: {
       rejectUnauthorized: false
   }
-})
+});
 
-// const db = new Pool({
-//   user: 'postgres',
-//   password: 'senai',
-//   host: 'localhost',
-//   port: 5432,
-//   database: 'familia'
-// });
-
-const formRepository = {
+const createFormRepository = (database) => ({
   async create(title, studentName) {
     const query = 'INSERT INTO forms (title, student_name) VALUES ($1, $2) RETURNING *';
     const values = [title, studentName];
-    const { rows } = await db.query(query, values);
+    const { rows } = await database.query(query, values);
     return rows[0];
   },
   
   async getRankingByFormId(formId) {
     const query = 'SELECT respondent_name, score FROM attempts WHERE form_id = $1 ORDER BY score DESC';
-    const { rows } = await db.query(query, [formId]);
+    const { rows } = await database.query(query, [formId]);
     return rows;
   }
-};
+});
 
-const questionRepository = {
+const createQuestionRepository = (database) => ({
   async create(formId, text, optionA, optionB, optionC, optionD, correctOption) {
     const query = `
       INSERT INTO questions 
@@ -51,25 +37,25 @@ const questionRepository = {
       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
     `;
     const values = [formId, text, optionA, optionB, optionC, optionD, correctOption];
-    const { rows } = await db.query(query, values);
+    const { rows } = await database.query(query, values);
     return rows[0];
   },
 
   async getQuestionsByFormId(formId) {
     const query = 'SELECT * FROM questions WHERE form_id = $1';
-    const { rows } = await db.query(query, [formId]);
+    const { rows } = await database.query(query, [formId]);
     return rows;
   }
-};
+});
 
-const attemptRepository = {
+const createAttemptRepository = (database) => ({
   async create(formId, respondentName, score) {
     const query = 'INSERT INTO attempts (form_id, respondent_name, score) VALUES ($1, $2, $3) RETURNING *';
     const values = [formId, respondentName, score];
-    const { rows } = await db.query(query, values);
+    const { rows } = await database.query(query, values);
     return rows[0];
   }
-};
+});
 
 const createFormUseCase = async (repository, data) => {
   return await repository.create(data.title, data.studentName);
@@ -107,6 +93,10 @@ const getRankingUseCase = async (repository, formId) => {
 
 const app = Fastify({ logger: true });
 await app.register(cors, { origin: '*' });
+
+const formRepository = createFormRepository(pool);
+const questionRepository = createQuestionRepository(pool);
+const attemptRepository = createAttemptRepository(pool);
 
 app.post('/forms', async (request, reply) => {
   const result = await createFormUseCase(formRepository, request.body);
