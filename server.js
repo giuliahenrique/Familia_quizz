@@ -1,16 +1,32 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import pg from 'pg';
+import * as dotenv from 'dotenv'
+
+dotenv.config()
 
 const { Pool } = pg;
 
-const db = new Pool({
-  user: 'postgres',
-  password: 'senai',
-  host: 'localhost',
-  port: 5432,
-  database: 'familia'
-});
+const fastify =Fastify();
+
+await fastify.register(cors, {
+  origin: '*'
+})
+
+const pool = new Pool({
+  connectionString: process.env.url_bd,
+  ssl: {
+      rejectUnauthorized: false
+  }
+})
+
+// const db = new Pool({
+//   user: 'postgres',
+//   password: 'senai',
+//   host: 'localhost',
+//   port: 5432,
+//   database: 'familia'
+// });
 
 const formRepository = {
   async create(title, studentName) {
